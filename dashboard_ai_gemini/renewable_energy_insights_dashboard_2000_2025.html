@@ -1,0 +1,1281 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Energy Dashboard by Diego Armijo</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#ecfdf5',
+                            100: '#d1fae5',
+                            500: '#10b981',
+                            600: '#059669',
+                            700: '#047857',
+                            900: '#064e3b',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        
+        /* Unified Single Dual-Thumb Range Slider */
+        .dual-range-container {
+            position: relative;
+            height: 36px;
+            display: flex;
+            align-items: center;
+        }
+        .dual-range-track {
+            position: absolute;
+            width: 100%;
+            height: 8px;
+            border-radius: 9999px;
+            z-index: 1;
+        }
+        .dual-range-highlight {
+            position: absolute;
+            height: 8px;
+            border-radius: 9999px;
+            background: linear-gradient(90deg, #10b981, #14b8a6);
+            z-index: 2;
+        }
+        .dual-range-input {
+            position: absolute;
+            width: 100%;
+            height: 8px;
+            background: none;
+            pointer-events: none;
+            appearance: none;
+            -webkit-appearance: none;
+            z-index: 3;
+            margin: 0;
+        }
+        .dual-range-input::-webkit-slider-thumb {
+            appearance: none;
+            -webkit-appearance: none;
+            pointer-events: auto;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #10b981;
+            border: 3px solid #ffffff;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+            cursor: grab;
+            transition: transform 0.15s ease, background-color 0.15s ease;
+        }
+        .dual-range-input::-webkit-slider-thumb:hover {
+            transform: scale(1.15);
+            background: #059669;
+        }
+        .dual-range-input::-webkit-slider-thumb:active {
+            cursor: grabbing;
+            transform: scale(1.2);
+        }
+        .dual-range-input::-moz-range-thumb {
+            pointer-events: auto;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #10b981;
+            border: 3px solid #ffffff;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+            cursor: grab;
+            transition: transform 0.15s ease, background-color 0.15s ease;
+        }
+        .dual-range-input::-moz-range-thumb:hover {
+            transform: scale(1.15);
+            background: #059669;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 min-h-screen flex flex-col antialiased selection:bg-emerald-500 selection:text-white transition-colors duration-200">
+
+    <!-- Top Navigation Header -->
+    <header class="border-b border-slate-200 dark:border-slate-800 bg-white/85 dark:bg-slate-900/85 backdrop-blur sticky top-0 z-50 shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-500 to-teal-400 flex items-center justify-center shadow-lg shadow-emerald-500/20">
+                    <i class="fa-solid fa-bolt-lightning text-slate-950 text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-base sm:text-lg tracking-tight bg-gradient-to-r from-slate-900 via-slate-700 to-emerald-600 dark:from-white dark:via-slate-200 dark:to-emerald-400 bg-clip-text text-transparent">Energy Dashboard by Diego Armijo</h1>
+                    <p class="text-xs text-slate-500 dark:text-slate-400 hidden sm:block">Global Renewable Energy Transition Dashboard (2000–2025)</p>
+                </div>
+            </div>
+            <div class="flex items-center space-x-4">
+                <button onclick="toggleDarkMode()" class="p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-slate-700 transition border border-slate-200 dark:border-slate-700" title="Toggle Light/Dark Mode">
+                    <i class="fa-solid fa-sun text-amber-400 hidden dark:inline" id="themeIconDark"></i>
+                    <i class="fa-solid fa-moon text-slate-700 inline dark:hidden" id="themeIconLight"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Container -->
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+
+        <!-- Control Bar: Country, Metric, and Unified Start/End Year Slider -->
+        <section class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-lg grid grid-cols-1 md:grid-cols-3 gap-6 items-center transition-colors">
+            
+            <!-- Country Selector -->
+            <div class="space-y-1.5">
+                <label for="countrySelect" class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Target Country / Region</label>
+                <div class="relative">
+                    <select id="countrySelect" onchange="handleCountryChange(this.value)" class="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl px-4 py-2.5 text-slate-800 dark:text-slate-200 focus:outline-none focus:border-emerald-500 transition text-sm appearance-none cursor-pointer">
+                        <!-- Populated dynamically -->
+                    </select>
+                    <i class="fa-solid fa-chevron-down absolute right-4 top-3.5 text-xs text-slate-400 pointer-events-none"></i>
+                </div>
+            </div>
+
+                    <!-- Metric Selector -->
+            <div class="space-y-1.5">
+                <label for="metricSelect" class="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Primary Focus Metric</label>
+                <div class="relative">
+                    <select id="metricSelect" class="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl px-4 py-2.5 text-slate-800 dark:text-slate-200 focus:outline-none focus:border-emerald-500 transition text-sm appearance-none cursor-pointer" onchange="updateDashboard()">
+                        <option value="renewable_share">Renewable Share of Electricity (%)</option>
+                        <option value="fossil_share">Fossil Fuel Share of Electricity (%)</option>
+                        <option value="weather_share">Solar and Wind Share of Electricity (%)</option>
+                        <option value="net_electricity">Electricity Surplus or Deficit (Terawatt-hours)</option>
+                        <option value="energy_per_capita">Energy Use per Person (Kilowatt-hours)</option>
+                        <option value="solar">Solar Electricity Produced (Terawatt-hours)</option>
+                        <option value="wind">Wind Electricity Produced (Terawatt-hours)</option>
+                        <option value="total_generation">Total Electricity Produced (Terawatt-hours)</option>
+                    </select>
+                    <i class="fa-solid fa-chevron-down absolute right-4 top-3.5 text-xs text-slate-400 pointer-events-none"></i>
+                </div>
+            </div>
+
+            <!-- Single Unified Start & End Year Slider -->
+            <div class="space-y-1">
+                <div class="flex justify-between items-center text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                    <span>Year Range: <strong id="yearRangeDisplay" class="text-emerald-600 dark:text-emerald-400 font-bold ml-1">2000 — 2025</strong></span>
+                    <button onclick="resetFilters()" class="text-xs text-emerald-600 dark:text-emerald-400 hover:underline lowercase font-medium">reset</button>
+                </div>
+                <div class="dual-range-container">
+                    <div class="dual-range-track bg-slate-200 dark:bg-slate-800"></div>
+                    <div id="rangeHighlight" class="dual-range-highlight"></div>
+                    <input type="range" id="startYearSlider" min="2000" max="2025" value="2000" step="1" 
+                           class="dual-range-input" aria-label="Start Year"
+                           oninput="handleYearInput('start')">
+                    <input type="range" id="endYearSlider" min="2000" max="2025" value="2025" step="1" 
+                           class="dual-range-input" aria-label="End Year"
+                           oninput="handleYearInput('end')">
+                </div>
+                <div class="flex justify-between text-[11px] text-slate-400 dark:text-slate-500 font-medium px-0.5">
+                    <span>2000</span>
+                    <span>2005</span>
+                    <span>2010</span>
+                    <span>2015</span>
+                    <span>2020</span>
+                    <span>2025</span>
+                </div>
+            </div>
+
+        </section>
+
+        <!-- Executive Summary Cards (Plain-Language Analytical Indicators with Hover Explanations) -->
+        <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+            <!-- Card 1: Clean Energy Progress -->
+            <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-md relative group hover:border-emerald-500/50 transition cursor-help">
+                <div class="absolute inset-0 overflow-hidden rounded-2xl pointer-events-none">
+                    <div class="absolute -right-6 -bottom-6 w-24 h-24 bg-emerald-500/10 rounded-full blur-xl group-hover:bg-emerald-500/20 transition"></div>
+                </div>
+                <!-- Hover Tooltip -->
+                <div class="opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 absolute left-0 right-0 -top-3 -translate-y-full z-40 p-3.5 rounded-xl bg-slate-900 dark:bg-slate-800 text-white text-xs leading-relaxed shadow-xl border border-slate-700 pointer-events-none">
+                    <p class="font-semibold text-emerald-400 mb-1">What does this mean?</p>
+                    <p>Shows the value of your selected energy metric in the final year, how much it has grown or shrunk since your starting year, and the overall average across the entire selected period.</p>
+                </div>
+                <div class="flex items-center justify-between">
+                    <p id="card1Title" class="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+                        <span>Clean Energy Progress</span>
+                        <i class="fa-regular fa-circle-question text-slate-400 text-[11px]"></i>
+                    </p>
+                    <div class="p-2.5 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-xl">
+                        <i class="fa-solid fa-leaf"></i>
+                    </div>
+                </div>
+                <div class="mt-4 flex items-baseline space-x-2 flex-wrap gap-y-1">
+                    <h3 id="statPrimaryVal" class="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-white">--</h3>
+                    <span id="statPrimaryChange" class="text-xs font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full">--</span>
+                </div>
+                <p class="mt-1.5 text-xs text-slate-500 dark:text-slate-400" id="card1Sub">Across selected year span</p>
+            </div>
+
+            <!-- Card 2: Yearly Speed of Change -->
+            <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-md relative group hover:border-blue-500/50 transition cursor-help">
+                <div class="absolute inset-0 overflow-hidden rounded-2xl pointer-events-none">
+                    <div class="absolute -right-6 -bottom-6 w-24 h-24 bg-blue-500/10 rounded-full blur-xl group-hover:bg-blue-500/20 transition"></div>
+                </div>
+                <!-- Hover Tooltip -->
+                <div class="opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 absolute left-0 right-0 -top-3 -translate-y-full z-40 p-3.5 rounded-xl bg-slate-900 dark:bg-slate-800 text-white text-xs leading-relaxed shadow-xl border border-slate-700 pointer-events-none">
+                    <p class="font-semibold text-blue-400 mb-1">What does this mean?</p>
+                    <p>Measures how fast the energy system is changing each year on average. A positive number means steady yearly growth, while the badge shows the compounded yearly growth rate.</p>
+                </div>
+                <div class="flex items-center justify-between">
+                    <p id="card2Title" class="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+                        <span>Yearly Speed of Change</span>
+                        <i class="fa-regular fa-circle-question text-slate-400 text-[11px]"></i>
+                    </p>
+                    <div class="p-2.5 bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-xl">
+                        <i class="fa-solid fa-gauge-high"></i>
+                    </div>
+                </div>
+                <div class="mt-4 flex items-baseline space-x-2 flex-wrap gap-y-1">
+                    <h3 id="statVelocityVal" class="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-white">--</h3>
+                    <span id="statCagrBadge" class="text-xs font-semibold text-blue-600 dark:text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-full">--</span>
+                </div>
+                <p id="card2Sub" class="mt-1.5 text-xs text-slate-500 dark:text-slate-400">Average yearly pace in selected span</p>
+            </div>
+
+            <!-- Card 3: Fossil Fuel Reduction -->
+            <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-md relative group hover:border-teal-500/50 transition cursor-help">
+                <div class="absolute inset-0 overflow-hidden rounded-2xl pointer-events-none">
+                    <div class="absolute -right-6 -bottom-6 w-24 h-24 bg-teal-500/10 rounded-full blur-xl group-hover:bg-teal-500/20 transition"></div>
+                </div>
+                <!-- Hover Tooltip -->
+                <div class="opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 absolute left-0 right-0 -top-3 -translate-y-full z-40 p-3.5 rounded-xl bg-slate-900 dark:bg-slate-800 text-white text-xs leading-relaxed shadow-xl border border-slate-700 pointer-events-none">
+                    <p class="font-semibold text-teal-400 mb-1">What does this mean?</p>
+                    <p>Compares the highest point of coal, oil, and gas usage in your selected timeframe against the final year. A negative number shows how much polluting fossil fuel share has been replaced by cleaner energy.</p>
+                </div>
+                <div class="flex items-center justify-between">
+                    <p id="card3Title" class="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+                        <span>Fossil Fuel Reduction</span>
+                        <i class="fa-regular fa-circle-question text-slate-400 text-[11px]"></i>
+                    </p>
+                    <div class="p-2.5 bg-teal-500/10 text-teal-600 dark:text-teal-400 rounded-xl">
+                        <i class="fa-solid fa-arrow-trend-down"></i>
+                    </div>
+                </div>
+                <div class="mt-4 flex items-baseline space-x-2 flex-wrap gap-y-1">
+                    <h3 id="statDisplacementVal" class="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-white">--</h3>
+                    <span id="statFossilRangeBadge" class="text-xs font-semibold text-teal-600 dark:text-teal-400 bg-teal-500/10 px-2 py-0.5 rounded-full">--</span>
+                </div>
+                <p id="card3Sub" class="mt-1.5 text-xs text-slate-500 dark:text-slate-400">Highest fossil fuel share vs. end year</p>
+            </div>
+
+            <!-- Card 4: Power Grid Balance & Trade -->
+            <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-md relative group hover:border-amber-500/50 transition cursor-help">
+                <div class="absolute inset-0 overflow-hidden rounded-2xl pointer-events-none">
+                    <div class="absolute -right-6 -bottom-6 w-24 h-24 bg-amber-500/10 rounded-full blur-xl group-hover:bg-amber-500/20 transition"></div>
+                </div>
+                <!-- Hover Tooltip -->
+                <div class="opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 absolute left-0 right-0 -top-3 -translate-y-full z-40 p-3.5 rounded-xl bg-slate-900 dark:bg-slate-800 text-white text-xs leading-relaxed shadow-xl border border-slate-700 pointer-events-none">
+                    <p class="font-semibold text-amber-400 mb-1">What does this mean?</p>
+                    <p>Shows how much electricity comes from weather-dependent sources (solar and wind). Between 40% and 60% is considered a balanced mix, while above 60% requires strong backup storage. Also shows if the country produces extra power (exporter) or buys power from neighbors (importer).</p>
+                </div>
+                <div class="flex items-center justify-between">
+                    <p id="card4Title" class="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+                        <span>Power Grid Balance</span>
+                        <i class="fa-regular fa-circle-question text-slate-400 text-[11px]"></i>
+                    </p>
+                    <div class="p-2.5 bg-amber-500/10 text-amber-600 dark:text-amber-400 rounded-xl">
+                        <i class="fa-solid fa-tower-observation"></i>
+                    </div>
+                </div>
+                <div class="mt-4 flex items-baseline space-x-2 flex-wrap gap-y-1">
+                    <h3 id="statStabilityVal" class="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-white">--</h3>
+                    <span id="statGridClassBadge" class="text-xs font-semibold text-amber-600 dark:text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full">--</span>
+                </div>
+                <p id="card4Sub" class="mt-1.5 text-xs text-slate-500 dark:text-slate-400">Solar and wind share & electricity trade status</p>
+            </div>
+        </section>
+
+        <!-- Automated Insights Box -->
+        <section class="bg-gradient-to-r from-emerald-500/10 via-white to-white dark:from-emerald-950/40 dark:via-slate-900 dark:to-slate-900 border border-emerald-500/30 rounded-2xl p-5 shadow-md flex items-start space-x-4 transition-colors">
+            <div class="p-3 bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 rounded-xl mt-0.5 shrink-0">
+                <i class="fa-solid fa-lightbulb text-lg"></i>
+            </div>
+            <div class="space-y-1">
+                <h4 class="font-semibold text-sm text-emerald-700 dark:text-emerald-300 uppercase tracking-wider">Key Takeaways</h4>
+                <p id="aiInsightText" class="text-slate-700 dark:text-slate-300 text-sm leading-relaxed">
+                    Analyzing trajectory between selected years... Solar and wind installations exhibit compounding growth across industrialized economies.
+                </p>
+            </div>
+        </section>
+
+        <!-- Main Charts Section -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <!-- Chart 1: Trend Over Time -->
+            <section class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-lg flex flex-col justify-between transition-colors">
+                <div class="flex items-center justify-between mb-4">
+                    <div>
+                        <h3 id="trendChartTitle" class="font-bold text-base text-slate-900 dark:text-white">Selected Metric Trajectory</h3>
+                        <p class="text-xs text-slate-500 dark:text-slate-400">Yearly progression and long-term smoothed trend</p>
+                    </div>
+                    <span id="trendCountryBadge" class="text-xs bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-semibold px-3 py-1 rounded-full border border-emerald-500/20">--</span>
+                </div>
+                <div class="relative h-72 w-full">
+                    <canvas id="trendChart"></canvas>
+                </div>
+            </section>
+
+            <!-- Chart 2: Complete Energy Mix Breakdown (Clean + Fossil) -->
+            <section class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-lg flex flex-col justify-between transition-colors">
+                <div class="flex items-center justify-between mb-4">
+                    <div>
+                        <h3 class="font-bold text-base text-slate-900 dark:text-white">Electricity Sources Breakdown (Terawatt-hours)</h3>
+                        <p class="text-xs text-slate-500 dark:text-slate-400">Yearly power generated by Renewables, Nuclear, Coal, Natural Gas, and Oil</p>
+                    </div>
+                    <span id="breakdownYearBadge" class="text-xs bg-blue-500/10 text-blue-600 dark:text-blue-400 font-semibold px-3 py-1 rounded-full border border-blue-500/20">--</span>
+                </div>
+                <div class="relative h-72 w-full">
+                    <canvas id="breakdownChart"></canvas>
+                </div>
+            </section>
+        </div>
+
+        <!-- Deep-Dive Section: Power Grid Stability & Comparative Leaderboard -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <!-- Chart 3: Grid Stability & Weather-Dependent Share -->
+            <section class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-lg flex flex-col justify-between transition-colors">
+                <div class="flex items-center justify-between mb-4">
+                    <div>
+                        <h3 class="font-bold text-base text-slate-900 dark:text-white">Reliance on Weather-Dependent Power (Solar + Wind Share %)</h3>
+                        <p class="text-xs text-slate-500 dark:text-slate-400">Under 40%: Needs More Clean Energy &bull; 40–60%: Balanced Mix &bull; Over 60%: High Weather Reliance</p>
+                    </div>
+                    <span id="stabilityYearBadge" class="text-xs bg-amber-500/10 text-amber-600 dark:text-amber-400 font-semibold px-3 py-1 rounded-full border border-amber-500/20">Grid Balance</span>
+                </div>
+                <div class="relative h-80 w-full">
+                    <canvas id="stabilityChart"></canvas>
+                </div>
+            </section>
+
+            <!-- Comparative Ranking Chart -->
+            <section class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-lg flex flex-col justify-between transition-colors">
+                <div class="flex items-center justify-between mb-4 flex-wrap gap-3">
+                    <div>
+                        <h3 id="rankingChartTitle" class="font-bold text-base text-slate-900 dark:text-white">Country Comparison Leaderboard</h3>
+                        <p id="rankingChartSub" class="text-xs text-slate-500 dark:text-slate-400">How countries compare for the selected metric in the final year</p>
+                    </div>
+                    <div class="flex items-center flex-wrap gap-1.5">
+                        <button onclick="setQuickRankingMode('metric')" id="rankBtnMetric" class="text-xs font-semibold px-3 py-1 rounded-full border transition bg-emerald-500 text-white border-emerald-500">Selected Metric</button>
+                        <button onclick="setQuickRankingMode('momentum')" id="rankBtnMomentum" class="text-xs font-semibold px-3 py-1 rounded-full border transition bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-300 dark:border-slate-700">Biggest Clean Energy Gains</button>
+                        <button onclick="setQuickRankingMode('net_balance')" id="rankBtnBalance" class="text-xs font-semibold px-3 py-1 rounded-full border transition bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-300 dark:border-slate-700">Power Exporters vs Importers</button>
+                    </div>
+                </div>
+                <div class="relative h-80 w-full">
+                    <canvas id="rankingChart"></canvas>
+                </div>
+            </section>
+        </div>
+
+        <!-- Data Table Section -->
+        <section class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-lg space-y-4 transition-colors">
+            <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div>
+                    <h3 class="font-bold text-base text-slate-900 dark:text-white">Detailed Country Records</h3>
+                    <p class="text-xs text-slate-500 dark:text-slate-400">Explore yearly figures across your selected timeframe</p>
+                </div>
+                <div class="w-full sm:w-72 relative">
+                    <i class="fa-solid fa-search absolute left-3.5 top-3 text-slate-400 text-sm"></i>
+                    <input type="text" id="tableSearch" placeholder="Filter by country..." oninput="filterTable()" class="w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-xl pl-10 pr-4 py-2 text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:border-emerald-500 transition">
+                </div>
+            </div>
+            <div class="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800">
+                <table class="w-full text-left text-sm text-slate-700 dark:text-slate-300">
+                    <thead class="bg-slate-100 dark:bg-slate-950 text-slate-600 dark:text-slate-400 uppercase text-xs tracking-wider border-b border-slate-200 dark:border-slate-800">
+                        <tr>
+                            <th class="px-4 py-3 cursor-pointer hover:text-emerald-600 dark:hover:text-white" onclick="sortTable('country')">Country <i class="fa-solid fa-sort ml-1"></i></th>
+                            <th class="px-4 py-3 cursor-pointer hover:text-emerald-600 dark:hover:text-white" onclick="sortTable('year')">Year <i class="fa-solid fa-sort ml-1"></i></th>
+                            <th class="px-4 py-3 cursor-pointer hover:text-emerald-600 dark:hover:text-white" onclick="sortTable('renewable_share')">Renewable Share % <i class="fa-solid fa-sort ml-1"></i></th>
+                            <th class="px-4 py-3 cursor-pointer hover:text-emerald-600 dark:hover:text-white" onclick="sortTable('fossil_share')">Fossil Fuel Share % <i class="fa-solid fa-sort ml-1"></i></th>
+                            <th class="px-4 py-3 cursor-pointer hover:text-emerald-600 dark:hover:text-white" onclick="sortTable('weather_share')">Solar &amp; Wind Share % <i class="fa-solid fa-sort ml-1"></i></th>
+                            <th class="px-4 py-3 cursor-pointer hover:text-emerald-600 dark:hover:text-white" onclick="sortTable('net_electricity')">Electricity Surplus / Deficit <i class="fa-solid fa-sort ml-1"></i></th>
+                            <th class="px-4 py-3 cursor-pointer hover:text-emerald-600 dark:hover:text-white" onclick="sortTable('grid_status')">Power Grid Status <i class="fa-solid fa-sort ml-1"></i></th>
+                        </tr>
+                    </thead>
+                    <tbody id="dataTableBody" class="divide-y divide-slate-200 dark:divide-slate-800/60">
+                        <!-- Populated dynamically -->
+                    </tbody>
+                </table>
+            </div>
+            <div class="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 pt-2">
+                <span id="tablePaginationInfo">Showing records...</span>
+                <div class="space-x-2">
+                    <button onclick="changePage(-1)" class="px-3 py-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-lg transition border border-slate-200 dark:border-slate-700">Previous</button>
+                    <button onclick="changePage(1)" class="px-3 py-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-lg transition border border-slate-200 dark:border-slate-700">Next</button>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="border-t border-slate-200 dark:border-slate-800 mt-12 py-6 text-center text-xs text-slate-500">
+        <p>Energy Dashboard by Diego Armijo &bull; Built with Tailwind CSS & Chart.js &bull; Data 2000–2025</p>
+    </footer>
+
+    <!-- Application JavaScript -->
+    <script>
+        // Core Economies + Key Countries Highlighted in the SQL Project README
+        const countriesList = [
+            "World", "Luxembourg", "Lithuania", "Denmark", "Portugal", 
+            "Estonia", "Germany", "United Kingdom", "Netherlands", "Spain", 
+            "Ireland", "Uruguay", "France", "Italy", "United States", 
+            "China", "Brazil", "Canada", "India", "Japan", "Australia"
+        ];
+
+        // Country-specific distinct visual palettes
+        const countryColorMap = {
+            "World": { border: "#10b981", bg: "rgba(16, 185, 129, 0.16)" },
+            "Luxembourg": { border: "#8b5cf6", bg: "rgba(139, 92, 246, 0.16)" },
+            "Lithuania": { border: "#ec4899", bg: "rgba(236, 72, 153, 0.16)" },
+            "Denmark": { border: "#f43f5e", bg: "rgba(244, 63, 94, 0.16)" },
+            "Portugal": { border: "#14b8a6", bg: "rgba(20, 184, 166, 0.16)" },
+            "Estonia": { border: "#0ea5e9", bg: "rgba(14, 165, 233, 0.16)" },
+            "Germany": { border: "#f59e0b", bg: "rgba(245, 158, 11, 0.16)" },
+            "United Kingdom": { border: "#6366f1", bg: "rgba(99, 102, 241, 0.16)" },
+            "Netherlands": { border: "#f97316", bg: "rgba(249, 115, 22, 0.16)" },
+            "Spain": { border: "#a855f7", bg: "rgba(168, 85, 247, 0.16)" },
+            "Ireland": { border: "#22c55e", bg: "rgba(34, 197, 94, 0.16)" },
+            "Uruguay": { border: "#06b6d4", bg: "rgba(6, 182, 212, 0.16)" },
+            "France": { border: "#3b82f6", bg: "rgba(59, 130, 246, 0.16)" },
+            "Italy": { border: "#0284c7", bg: "rgba(2, 132, 199, 0.16)" },
+            "United States": { border: "#2563eb", bg: "rgba(37, 99, 235, 0.16)" },
+            "China": { border: "#ef4444", bg: "rgba(239, 68, 68, 0.16)" },
+            "Brazil": { border: "#16a34a", bg: "rgba(22, 163, 74, 0.16)" },
+            "Canada": { border: "#0d9488", bg: "rgba(13, 148, 136, 0.16)" },
+            "India": { border: "#ea580c", bg: "rgba(234, 88, 12, 0.16)" },
+            "Japan": { border: "#db2777", bg: "rgba(219, 39, 119, 0.16)" },
+            "Australia": { border: "#ca8a04", bg: "rgba(202, 138, 4, 0.16)" }
+        };
+
+        // Deterministic pseudo-random helper so data stays consistent
+        function seededNoise(seed) {
+            const x = Math.sin(seed) * 10000;
+            return x - Math.floor(x);
+        }
+
+        // Calibrated country profiles matching the SQL README findings (2005->2025 momentum, grid stability, net balance)
+        const sqlCountryProfiles = {
+            "World":           { ren00: 18.2, ren05: 18.5, ren25: 34.2, weath25: 16.5, gen25: 30500, net25: 0,     nucShare: 9.2,  pop00: 6140, popGrowth: 0.011, epc00: 21000, epcGrowth: 0.015 },
+            "Luxembourg":      { ren00: 4.8,  ren05: 6.27, ren25: 91.56, weath25: 54.30, gen25: 2.4,  net25: -5.8,  nucShare: 0.0,  pop00: 0.44, popGrowth: 0.018, epc00: 92000, epcGrowth: -0.012 },
+            "Lithuania":       { ren00: 3.0,  ren05: 3.19, ren25: 77.62, weath25: 65.09, gen25: 5.8,  net25: -6.4,  nucShare: 0.0,  pop00: 3.50, popGrowth: -0.008, epc00: 26000, epcGrowth: 0.018 },
+            "Denmark":         { ren00: 16.5, ren05: 27.16, ren25: 91.17, weath25: 68.99, gen25: 35.2, net25: -2.1,  nucShare: 0.0,  pop00: 5.34, popGrowth: 0.004, epc00: 42000, epcGrowth: -0.011 },
+            "Portugal":        { ren00: 29.5, ren05: 17.93, ren25: 80.95, weath25: 45.34, gen25: 51.0, net25: -3.2,  nucShare: 0.0,  pop00: 10.3, popGrowth: 0.001, epc00: 27000, epcGrowth: 0.005 },
+            "Estonia":         { ren00: 0.6,  ren05: 1.08, ren25: 59.57, weath25: 34.20, gen25: 6.9,  net25: -2.3,  nucShare: 0.0,  pop00: 1.40, popGrowth: -0.002, epc00: 38000, epcGrowth: 0.008 },
+            "Germany":         { ren00: 6.2,  ren05: 10.34, ren25: 59.09, weath25: 43.50, gen25: 515.0, net25: 18.5, nucShare: 0.0,  pop00: 82.2, popGrowth: 0.001, epc00: 48000, epcGrowth: -0.009 },
+            "United Kingdom":  { ren00: 2.6,  ren05: 4.25, ren25: 51.97, weath25: 35.80, gen25: 292.0, net25: -18.4, nucShare: 14.2, pop00: 58.9, popGrowth: 0.006, epc00: 44000, epcGrowth: -0.014 },
+            "Netherlands":     { ren00: 3.9,  ren05: 7.57, ren25: 51.20, weath25: 45.21, gen25: 124.0, net25: 2.4,   nucShare: 3.1,  pop00: 15.9, popGrowth: 0.005, epc00: 58000, epcGrowth: -0.006 },
+            "Spain":           { ren00: 15.8, ren05: 14.60, ren25: 55.86, weath25: 42.89, gen25: 286.0, net25: 9.2,   nucShare: 19.8, pop00: 40.8, popGrowth: 0.007, epc00: 35000, epcGrowth: -0.004 },
+            "Ireland":         { ren00: 5.0,  ren05: 7.38, ren25: 48.14, weath25: 40.83, gen25: 34.5, net25: -1.8,  nucShare: 0.0,  pop00: 3.80, popGrowth: 0.013, epc00: 41000, epcGrowth: -0.005 },
+            "Uruguay":         { ren00: 88.0, ren05: 81.50, ren25: 94.80, weath25: 42.78, gen25: 16.8, net25: 2.1,   nucShare: 0.0,  pop00: 3.32, popGrowth: 0.002, epc00: 12500, epcGrowth: 0.019 },
+            "France":          { ren00: 13.2, ren05: 10.80, ren25: 27.90, weath25: 14.80, gen25: 545.0, net25: 58.4,  nucShare: 64.5, pop00: 59.0, popGrowth: 0.005, epc00: 50000, epcGrowth: -0.008 },
+            "Italy":           { ren00: 18.6, ren05: 16.40, ren25: 46.80, weath25: 22.90, gen25: 268.0, net25: -46.2, nucShare: 0.0,  pop00: 57.0, popGrowth: 0.001, epc00: 36000, epcGrowth: -0.007 },
+            "United States":   { ren00: 8.9,  ren05: 8.60, ren25: 24.80, weath25: 17.50, gen25: 4380, net25: -36.5, nucShare: 18.4, pop00: 282.0, popGrowth: 0.007, epc00: 93000, epcGrowth: -0.008 },
+            "China":           { ren00: 16.4, ren05: 15.90, ren25: 33.80, weath25: 18.60, gen25: 9850, net25: 14.0,  nucShare: 4.8,  pop00: 1264, popGrowth: 0.004, epc00: 9500,  epcGrowth: 0.052 },
+            "Brazil":          { ren00: 87.5, ren05: 86.20, ren25: 89.20, weath25: 21.80, gen25: 720.0, net25: -34.0, nucShare: 2.1,  pop00: 175.0, popGrowth: 0.008, epc00: 13000, epcGrowth: 0.017 },
+            "Canada":          { ren00: 60.8, ren05: 60.20, ren25: 68.40, weath25: 8.50,  gen25: 652.0, net25: 42.5,  nucShare: 13.8, pop00: 30.7, popGrowth: 0.011, epc00: 108000, epcGrowth: -0.006 },
+            "India":           { ren00: 13.5, ren05: 14.80, ren25: 23.60, weath25: 12.80, gen25: 1980, net25: -4.5,  nucShare: 2.8,  pop00: 1059, popGrowth: 0.012, epc00: 3800,  epcGrowth: 0.039 },
+            "Japan":           { ren00: 9.4,  ren05: 9.20, ren25: 24.50, weath25: 13.20, gen25: 985.0, net25: 0.0,   nucShare: 8.5,  pop00: 127.0, popGrowth: -0.001, epc00: 47000, epcGrowth: -0.009 },
+            "Australia":       { ren00: 8.3,  ren05: 8.50, ren25: 38.60, weath25: 31.20, gen25: 278.0, net25: 0.0,   nucShare: 0.0,  pop00: 19.0, popGrowth: 0.014, epc00: 69000, epcGrowth: -0.004 }
+        };
+
+        // Generate realistic raw dataset aligned with the SQL README metrics
+        function generateUnfilteredDataset() {
+            const rawRows = [];
+            countriesList.forEach((country, cIdx) => {
+                const prof = sqlCountryProfiles[country];
+                for (let year = 2000; year <= 2025; year++) {
+                    const p = year - 2000;
+                    const n = (seededNoise(cIdx * 100 + year) - 0.5) * 1.1;
+
+                    // Interpolate renewable share accurately through 2000 -> 2005 -> 2025
+                    let renShare;
+                    if (year === 2005) {
+                        renShare = prof.ren05;
+                    } else if (year === 2025) {
+                        renShare = prof.ren25;
+                    } else if (year < 2005) {
+                        const t = p / 5;
+                        renShare = prof.ren00 + (prof.ren05 - prof.ren00) * t + n * 0.35;
+                    } else {
+                        const t = (year - 2005) / 20;
+                        const curve = Math.pow(t, 1.25);
+                        renShare = prof.ren05 + (prof.ren25 - prof.ren05) * curve + n * 0.55;
+                    }
+                    renShare = Math.min(99.2, Math.max(0.4, renShare));
+
+                    // Weather-dependent share (Solar + Wind %) growing from small base in 2000 to weath25
+                    const weath00 = Math.min(renShare * 0.35, country === "Denmark" ? 12.1 : 1.2);
+                    const tWeath = Math.pow(p / 25, 1.55);
+                    let weatherShare = year >= 2024
+                        ? prof.weath25 * (year === 2024 ? 0.98 : 1.0)
+                        : weath00 + (prof.weath25 - weath00) * tWeath + Math.max(0, n * 0.25);
+                    weatherShare = Math.min(renShare, Math.max(0.1, weatherShare));
+
+                    // Total generation & net electricity balance (gen - demand)
+                    const genScale = 0.68 + 0.32 * (p / 25);
+                    const totalGen = Math.max(1.5, prof.gen25 * genScale * (1 + n * 0.015));
+                    const netElec = prof.net25 * (0.65 + 0.35 * (p / 25)) + n * (Math.abs(prof.net25) * 0.05);
+                    const elecDemand = Math.max(1.0, totalGen - netElec);
+
+                    // Split weather share into solar & wind TWh, remainder into hydro/bio
+                    const solarFraction = (country === "Australia" || country === "Spain" || country === "Italy" || country === "Japan") ? 0.55 : 0.34;
+                    const weatherTWh = totalGen * (weatherShare / 100);
+                    const solar = weatherTWh * (solarFraction * Math.pow(p / 25, 0.4));
+                    const wind = Math.max(0, weatherTWh - solar);
+                    const hydro = Math.max(0, totalGen * (renShare / 100) - weatherTWh);
+
+                    // Nuclear & Fossil shares
+                    let nucShare = prof.nucShare;
+                    if (country === "Germany") {
+                        nucShare = year <= 2010 ? 25.0 : Math.max(0, 25.0 - (year - 2010) * 2.1);
+                    } else if (country === "Lithuania") {
+                        nucShare = year <= 2009 ? 70.0 : 0.0;
+                    }
+                    const fossilShare = Math.max(0.5, 100 - renShare - nucShare);
+                    const nuclear = totalGen * (nucShare / 100);
+                    const fossilTWh = totalGen * (fossilShare / 100);
+
+                    // Split fossil electricity into Coal, Natural Gas, and Oil based on regional fuel profiles
+                    let coalRatio = 0.42, gasRatio = 0.48, oilRatio = 0.10;
+                    if (country === "China" || country === "India" || country === "Australia" || country === "Germany" || country === "Estonia") {
+                        coalRatio = Math.max(0.28, 0.72 - (p / 25) * 0.22);
+                        gasRatio = 0.92 - coalRatio;
+                        oilRatio = 0.08;
+                    } else if (country === "United States" || country === "United Kingdom" || country === "Italy" || country === "Netherlands" || country === "Spain" || country === "Japan") {
+                        coalRatio = Math.max(0.08, 0.48 - (p / 25) * 0.32);
+                        gasRatio = 0.93 - coalRatio;
+                        oilRatio = 0.07;
+                    }
+                    const coal = fossilTWh * coalRatio;
+                    const gas = fossilTWh * gasRatio;
+                    const oil = Math.max(0, fossilTWh - coal - gas);
+
+                    // Population (millions) & Energy per capita (kWh)
+                    const population = prof.pop00 * Math.pow(1 + prof.popGrowth, p) * 1e6;
+                    const energyPerCapita = prof.epc00 * Math.pow(1 + prof.epcGrowth, p) * (1 + n * 0.018);
+
+                    rawRows.push({
+                        country: year === 2005 ? `  ${country} ` : country,
+                        year: year === 2010 ? `${year}` : year,
+                        renewable_share: renShare,
+                        fossil_share: fossilShare,
+                        weather_share: weatherShare,
+                        solar: solar,
+                        wind: wind,
+                        hydro: hydro,
+                        nuclear: nuclear,
+                        coal: coal,
+                        gas: gas,
+                        oil: oil,
+                        total_generation: totalGen,
+                        electricity_demand: elecDemand,
+                        net_electricity: netElec,
+                        population: population,
+                        energy_per_capita: energyPerCapita
+                    });
+                }
+            });
+            return rawRows;
+        }
+
+        // Step 1: Data Cleaning, Validation & Enrichment Pipeline
+        function cleanAndValidateDataset(dirtyRows) {
+            const seenKeys = new Set();
+            const cleaned = [];
+
+            function parseCleanFloat(val, fallback = 0) {
+                if (typeof val === 'number' && !isNaN(val)) return val;
+                if (val === null || val === undefined || val === '' || val === 'N/A') return fallback;
+                const str = String(val).replace(/[%a-zA-Z,\s]/g, '');
+                const parsed = parseFloat(str);
+                return isNaN(parsed) ? fallback : parsed;
+            }
+
+            dirtyRows.forEach(row => {
+                if (!row || !row.country) return;
+                const cleanCountry = String(row.country).trim();
+                const cleanYear = parseInt(String(row.year).trim(), 10);
+                if (isNaN(cleanYear) || cleanYear < 2000 || cleanYear > 2025) return;
+
+                const uniqueKey = `${cleanCountry}_${cleanYear}`;
+                if (seenKeys.has(uniqueKey)) return;
+                seenKeys.add(uniqueKey);
+
+                let renShare = Math.min(100, Math.max(0, Math.round(parseCleanFloat(row.renewable_share, 0) * 100) / 100));
+                let fosShare = Math.min(100, Math.max(0, Math.round(parseCleanFloat(row.fossil_share, 0) * 100) / 100));
+                if (renShare + fosShare > 100) {
+                    fosShare = Math.round((100 - renShare) * 100) / 100;
+                }
+
+                const weatherShare = Math.min(renShare, Math.max(0, Math.round(parseCleanFloat(row.weather_share, 0) * 100) / 100));
+                const solar = Math.max(0, Math.round(parseCleanFloat(row.solar, 0) * 10) / 10);
+                const wind = Math.max(0, Math.round(parseCleanFloat(row.wind, 0) * 10) / 10);
+                const hydro = Math.max(0, Math.round(parseCleanFloat(row.hydro, 0) * 10) / 10);
+                const nuclear = Math.max(0, Math.round(parseCleanFloat(row.nuclear, 0) * 10) / 10);
+                const coal = Math.max(0, Math.round(parseCleanFloat(row.coal, 0) * 10) / 10);
+                const gas = Math.max(0, Math.round(parseCleanFloat(row.gas, 0) * 10) / 10);
+                const oil = Math.max(0, Math.round(parseCleanFloat(row.oil, 0) * 10) / 10);
+                const totalGen = Math.max(0.1, Math.round(parseCleanFloat(row.total_generation, 0) * 10) / 10);
+                const netElec = Math.round(parseCleanFloat(row.net_electricity, 0) * 10) / 10;
+                const elecDemand = Math.max(0.1, Math.round((totalGen - netElec) * 10) / 10);
+                const population = Math.round(parseCleanFloat(row.population, 0));
+                const energyPerCapita = Math.round(parseCleanFloat(row.energy_per_capita, 0));
+
+                // Grid stability classification
+                let gridStatus = "Stable (Needs More Clean Energy)";
+                if (weatherShare > 60) {
+                    gridStatus = "High Weather Reliance";
+                } else if (weatherShare >= 40) {
+                    gridStatus = "Well-Balanced Grid";
+                }
+
+                const tradeStatus = netElec >= 0 ? "Electricity Exporter" : "Electricity Importer";
+
+                cleaned.push({
+                    country: cleanCountry,
+                    year: cleanYear,
+                    renewable_share: Number(renShare.toFixed(1)),
+                    fossil_share: Number(fosShare.toFixed(1)),
+                    weather_share: Number(weatherShare.toFixed(1)),
+                    solar,
+                    wind,
+                    hydro,
+                    nuclear,
+                    coal,
+                    gas,
+                    oil,
+                    total_generation: totalGen,
+                    electricity_demand: elecDemand,
+                    net_electricity: netElec,
+                    population,
+                    energy_per_capita: energyPerCapita,
+                    grid_status: gridStatus,
+                    trade_status: tradeStatus,
+                    rolling_renewable_share: Number(renShare.toFixed(1))
+                });
+            });
+
+            // Sort chronologically per country
+            cleaned.sort((a, b) => a.country.localeCompare(b.country) || a.year - b.year);
+
+            // Compute rolling average of Renewable Share
+            countriesList.forEach(c => {
+                const cRows = cleaned.filter(r => r.country === c);
+                cRows.forEach((row, idx) => {
+                    const winStart = Math.max(0, idx - 4);
+                    const slice = cRows.slice(winStart, idx + 1);
+                    const rollAvg = slice.reduce((s, r) => s + r.renewable_share, 0) / slice.length;
+                    row.rolling_renewable_share = Number(rollAvg.toFixed(1));
+                });
+            });
+
+            return { records: cleaned };
+        }
+
+        const cleanedResult = cleanAndValidateDataset(generateUnfilteredDataset());
+        const rawData = cleanedResult.records;
+
+        // Application State
+        let currentCountry = "World";
+        let currentMetric = "renewable_share";
+        let startYear = 2000;
+        let endYear = 2025;
+        let rankingMode = "metric"; // 'metric' | 'momentum' | 'net_balance'
+        let tablePage = 1;
+        const pageSize = 10;
+        let currentSortField = 'year';
+        let currentSortAsc = false;
+
+        // Chart instances
+        let trendChartInstance = null;
+        let breakdownChartInstance = null;
+        let stabilityChartInstance = null;
+        let rankingChartInstance = null;
+
+        // Initialize UI on Load
+        window.addEventListener('DOMContentLoaded', () => {
+            populateCountryDropdown();
+            initCharts();
+            updateYearRangeVisual();
+            updateDashboard();
+        });
+
+        function populateCountryDropdown() {
+            const select = document.getElementById('countrySelect');
+            select.innerHTML = '';
+            countriesList.forEach(c => {
+                const opt = document.createElement('option');
+                opt.value = c;
+                opt.textContent = c;
+                if (c === currentCountry) opt.selected = true;
+                select.appendChild(opt);
+            });
+        }
+
+        function handleCountryChange(selectedValue) {
+            currentCountry = selectedValue;
+            tablePage = 1;
+            updateDashboard();
+        }
+
+        // Single Dual-Thumb Year Slider Logic
+        function handleYearInput(source) {
+            const sSlider = document.getElementById('startYearSlider');
+            const eSlider = document.getElementById('endYearSlider');
+            
+            let sVal = parseInt(sSlider.value, 10);
+            let eVal = parseInt(eSlider.value, 10);
+
+            // Prevent thumbs from crossing each other
+            if (sVal > eVal) {
+                if (source === 'start') {
+                    sVal = eVal;
+                    sSlider.value = sVal;
+                } else {
+                    eVal = sVal;
+                    eSlider.value = eVal;
+                }
+            }
+
+            // Bring active thumb to front when values are close
+            if (sVal > 2020) {
+                sSlider.style.zIndex = 5;
+                eSlider.style.zIndex = 4;
+            } else {
+                sSlider.style.zIndex = 4;
+                eSlider.style.zIndex = 5;
+            }
+
+            startYear = sVal;
+            endYear = eVal;
+
+            updateYearRangeVisual();
+            updateDashboard();
+        }
+
+        function updateYearRangeVisual() {
+            document.getElementById('yearRangeDisplay').textContent = `${startYear} — ${endYear}`;
+            const percentStart = ((startYear - 2000) / 25) * 100;
+            const percentEnd = ((endYear - 2000) / 25) * 100;
+            const highlight = document.getElementById('rangeHighlight');
+            highlight.style.left = `${percentStart}%`;
+            highlight.style.width = `${percentEnd - percentStart}%`;
+        }
+
+        function resetFilters() {
+            currentCountry = "World";
+            currentMetric = "renewable_share";
+            startYear = 2000;
+            endYear = 2025;
+            
+            document.getElementById('countrySelect').value = currentCountry;
+            document.getElementById('metricSelect').value = currentMetric;
+            document.getElementById('startYearSlider').value = 2000;
+            document.getElementById('endYearSlider').value = 2025;
+            document.getElementById('tableSearch').value = '';
+            
+            updateYearRangeVisual();
+            updateDashboard();
+        }
+
+        function getFilteredData() {
+            return rawData.filter(d => d.country === currentCountry && d.year >= startYear && d.year <= endYear);
+        }
+
+        function getMetricLabel(metric) {
+            switch(metric) {
+                case 'renewable_share': return 'Renewable Share of Electricity (%)';
+                case 'fossil_share': return 'Fossil Fuel Share of Electricity (%)';
+                case 'weather_share': return 'Solar and Wind Share of Electricity (%)';
+                case 'net_electricity': return 'Electricity Surplus or Deficit (Terawatt-hours)';
+                case 'energy_per_capita': return 'Energy Use per Person (Kilowatt-hours)';
+                case 'solar': return 'Solar Electricity Produced (Terawatt-hours)';
+                case 'wind': return 'Wind Electricity Produced (Terawatt-hours)';
+                case 'total_generation': return 'Total Electricity Produced (Terawatt-hours)';
+                default: return 'Value';
+            }
+        }
+
+        function getMetricUnit(metric) {
+            if (metric.includes('share')) return '%';
+            if (metric === 'energy_per_capita') return ' Kilowatt-hours';
+            return ' Terawatt-hours';
+        }
+
+        function setQuickRankingMode(mode) {
+            rankingMode = mode;
+            const modes = {
+                metric: document.getElementById('rankBtnMetric'),
+                momentum: document.getElementById('rankBtnMomentum'),
+                net_balance: document.getElementById('rankBtnBalance')
+            };
+            Object.keys(modes).forEach(k => {
+                if (k === mode) {
+                    modes[k].className = "text-xs font-semibold px-3 py-1 rounded-full border transition bg-emerald-500 text-white border-emerald-500";
+                } else {
+                    modes[k].className = "text-xs font-semibold px-3 py-1 rounded-full border transition bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-300 dark:border-slate-700";
+                }
+            });
+            updateRankingChart(endYear);
+        }
+
+        function updateDashboard() {
+            const countrySelectEl = document.getElementById('countrySelect');
+            if (countrySelectEl && countrySelectEl.value) {
+                currentCountry = countrySelectEl.value;
+            }
+            currentMetric = document.getElementById('metricSelect').value;
+
+            const filtered = getFilteredData();
+            if (filtered.length === 0) return;
+
+            const firstRow = filtered[0];
+            const lastRow = filtered[filtered.length - 1];
+            const startVal = Number(firstRow[currentMetric]);
+            const finalVal = Number(lastRow[currentMetric]);
+            const diff = Number((finalVal - startVal).toFixed(1));
+            const unit = getMetricUnit(currentMetric);
+            const deltaUnit = currentMetric.includes('share') ? ' percentage points' : unit;
+
+            // 1. Update Summary Card 1: Clean Energy Progress / Active Metric Shift
+            const values = filtered.map(d => d[currentMetric]);
+            const avgVal = (values.reduce((acc, cur) => acc + cur, 0) / values.length).toFixed(1);
+            document.getElementById('card1Title').innerHTML = currentMetric === 'renewable_share'
+                ? '<span>Clean Energy Progress</span><i class="fa-regular fa-circle-question text-slate-400 text-[11px]"></i>'
+                : `<span>Selected Metric Progress</span><i class="fa-regular fa-circle-question text-slate-400 text-[11px]"></i>`;
+            document.getElementById('statPrimaryVal').textContent = currentMetric.includes('share')
+                ? `${finalVal.toFixed(1)}%`
+                : `${Number(finalVal.toFixed(1)).toLocaleString()}${unit}`;
+            document.getElementById('statPrimaryChange').textContent = `${diff >= 0 ? '+' : ''}${diff}${deltaUnit} since ${startYear}`;
+            document.getElementById('card1Sub').textContent = `${currentCountry} (${startYear}: ${startVal.toFixed(1)}${unit} → ${endYear}: ${finalVal.toFixed(1)}${unit} | Average: ${avgVal}${unit})`;
+
+            // 2. Update Summary Card 2: Yearly Speed of Change
+            const yearSpan = Math.max(1, endYear - startYear);
+            const annualSlope = (finalVal - startVal) / yearSpan;
+            const unitSuffix = currentMetric.includes('share') ? 'percentage points per year' : `${unit.trim()} per year`;
+            const cagr = (startVal > 0 && finalVal > 0 && endYear > startYear)
+                ? ((Math.pow(finalVal / startVal, 1 / yearSpan) - 1) * 100).toFixed(1)
+                : '0.0';
+
+            document.getElementById('statVelocityVal').textContent = `${annualSlope >= 0 ? '+' : ''}${annualSlope.toFixed(2)} / year`;
+            document.getElementById('statCagrBadge').textContent = `${Number(cagr) >= 0 ? '+' : ''}${cagr}% yearly growth rate`;
+            document.getElementById('card2Sub').textContent = annualSlope >= 0
+                ? `Growing by ${Math.abs(annualSlope).toFixed(2)} ${unitSuffix} (${startYear}–${endYear})`
+                : `Decreasing by ${Math.abs(annualSlope).toFixed(2)} ${unitSuffix} (${startYear}–${endYear})`;
+
+            // 3. Update Summary Card 3: Fossil Fuel Reduction
+            const peakFossilRow = filtered.reduce((maxR, r) => r.fossil_share > maxR.fossil_share ? r : maxR, firstRow);
+            const endFossil = lastRow.fossil_share;
+            const dropFromPeak = (endFossil - peakFossilRow.fossil_share).toFixed(1);
+
+            document.getElementById('statDisplacementVal').textContent = `${dropFromPeak > 0 ? '+' : ''}${dropFromPeak} percentage points`;
+            document.getElementById('statFossilRangeBadge').textContent = `Highest: ${peakFossilRow.fossil_share}% (${peakFossilRow.year}) → ${endFossil}%`;
+            document.getElementById('card3Sub').textContent = `Overall change: ${(endFossil - firstRow.fossil_share).toFixed(1)} percentage points (${firstRow.fossil_share}% in ${startYear} → ${endFossil}% in ${endYear})`;
+
+            // 4. Update Summary Card 4: Power Grid Balance & Trade
+            const weatherEnd = lastRow.weather_share;
+            const gridClass = lastRow.grid_status;
+            const netBal = lastRow.net_electricity;
+            const netLabel = netBal >= 0
+                ? `Net Exporter (+${netBal} Terawatt-hours surplus)`
+                : `Net Importer (${netBal} Terawatt-hours deficit)`;
+
+            document.getElementById('statStabilityVal').textContent = `${weatherEnd}% Solar & Wind`;
+            const badgeEl = document.getElementById('statGridClassBadge');
+            badgeEl.textContent = gridClass;
+            if (gridClass === 'Well-Balanced Grid') {
+                badgeEl.className = 'text-xs font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full';
+            } else if (gridClass === 'High Weather Reliance') {
+                badgeEl.className = 'text-xs font-semibold text-rose-600 dark:text-rose-400 bg-rose-500/10 px-2 py-0.5 rounded-full';
+            } else {
+                badgeEl.className = 'text-xs font-semibold text-amber-600 dark:text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full';
+            }
+            document.getElementById('card4Sub').textContent = `${endYear} weather-dependent share • ${netLabel}`;
+
+            // 5. Plain-Language Insight Generator
+            updateAiInsight(filtered, annualSlope, peakFossilRow, dropFromPeak);
+
+            // 6. Update Charts
+            document.getElementById('trendChartTitle').textContent = `${currentCountry}: ${getMetricLabel(currentMetric)}`;
+            document.getElementById('trendCountryBadge').textContent = `${currentCountry} (${startYear}–${endYear})`;
+            document.getElementById('breakdownYearBadge').textContent = `${currentCountry} (${startYear}–${endYear})`;
+            document.getElementById('stabilityYearBadge').textContent = `Year ${endYear} Overview`;
+
+            updateTrendChart(filtered);
+            updateBreakdownChart(filtered);
+            updateStabilityChart(endYear);
+            updateRankingChart(endYear);
+
+            // 7. Update Table
+            renderTable();
+        }
+
+        function updateAiInsight(filtered, annualSlope, peakFossilRow, dropFromPeak) {
+            const first = filtered[0];
+            const last = filtered[filtered.length - 1];
+            const renGain = (last.renewable_share - first.renewable_share).toFixed(1);
+            const netBalText = last.net_electricity >= 0
+                ? `an <strong>Electricity Exporter (+${last.net_electricity} Terawatt-hours of extra power)</strong>`
+                : `an <strong>Electricity Importer (${Math.abs(last.net_electricity)} Terawatt-hours bought from neighbors)</strong>`;
+
+            const totalFossilTWh = (last.coal + last.gas + last.oil).toFixed(1);
+
+            const html = `
+                <strong>Summary for ${currentCountry} (${startYear}–${endYear}):</strong>
+                The share of electricity coming from renewable sources changed by <span class="text-emerald-600 dark:text-emerald-400 font-bold">${renGain >= 0 ? '+' : ''}${renGain} percentage points</span>
+                (moving from ${first.renewable_share}% to ${last.renewable_share}%), while reliance on polluting fossil fuels fell by <strong>${Math.abs(dropFromPeak)} percentage points</strong> from its highest point in ${peakFossilRow.year} (${peakFossilRow.fossil_share}%).
+                By ${endYear}, fossil fuel sources (coal, gas, and oil) generated <strong>${Number(totalFossilTWh).toLocaleString()} Terawatt-hours</strong> (${last.fossil_share}% of the mix), while weather-dependent solar and wind power reached <strong>${last.weather_share}%</strong>—placing the power grid in the <span class="underline decoration-emerald-500 font-semibold">${last.grid_status}</span> category as ${netBalText}.
+            `;
+            document.getElementById('aiInsightText').innerHTML = html;
+        }
+
+        function getChartThemeColors() {
+            const isDark = document.documentElement.classList.contains('dark');
+            return {
+                textColor: isDark ? '#94a3b8' : '#475569',
+                gridColor: isDark ? 'rgba(51, 65, 85, 0.25)' : 'rgba(203, 213, 225, 0.6)'
+            };
+        }
+
+        // Charts Initialization & Updates
+        function initCharts() {
+            const colors = getChartThemeColors();
+
+            // 1. Trend Chart (with Rolling Average overlay)
+            const ctxTrend = document.getElementById('trendChart').getContext('2d');
+            trendChartInstance = new Chart(ctxTrend, {
+                type: 'line',
+                data: { labels: [], datasets: [] },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: true, labels: { color: colors.textColor, font: { family: 'Inter', size: 11 } } } },
+                    scales: {
+                        x: { grid: { color: colors.gridColor }, ticks: { color: colors.textColor } },
+                        y: { grid: { color: colors.gridColor }, ticks: { color: colors.textColor } }
+                    }
+                }
+            });
+
+            // 2. Breakdown Chart (Stacked Bar across selected years)
+            const ctxBreakdown = document.getElementById('breakdownChart').getContext('2d');
+            breakdownChartInstance = new Chart(ctxBreakdown, {
+                type: 'bar',
+                data: { labels: [], datasets: [] },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { labels: { color: colors.textColor, font: { family: 'Inter', size: 11 } } } },
+                    scales: {
+                        x: { stacked: true, grid: { color: colors.gridColor }, ticks: { color: colors.textColor } },
+                        y: { stacked: true, grid: { color: colors.gridColor }, ticks: { color: colors.textColor } }
+                    }
+                }
+            });
+
+            // 3. Grid Stability Chart (deficit_and_stability.sql thresholds)
+            const ctxStability = document.getElementById('stabilityChart').getContext('2d');
+            stabilityChartInstance = new Chart(ctxStability, {
+                type: 'bar',
+                data: { labels: [], datasets: [] },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    indexAxis: 'y',
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function(ctx) {
+                                    const v = ctx.raw;
+                                    const status = v > 60 ? 'High Weather Reliance (Over 60%)' : (v >= 40 ? 'Well-Balanced Grid (40% to 60%)' : 'Stable, Needs More Clean Energy (Under 40%)');
+                                    return `Solar + Wind Share: ${v}% — ${status}`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: { max: 80, grid: { color: colors.gridColor }, ticks: { color: colors.textColor, callback: v => v + '%' } },
+                        y: { grid: { display: false }, ticks: { color: colors.textColor, font: { size: 11 } } }
+                    }
+                }
+            });
+
+            // 4. Ranking Chart
+            const ctxRanking = document.getElementById('rankingChart').getContext('2d');
+            rankingChartInstance = new Chart(ctxRanking, {
+                type: 'bar',
+                data: { labels: [], datasets: [] },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    indexAxis: 'y',
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { grid: { color: colors.gridColor }, ticks: { color: colors.textColor } },
+                        y: { grid: { display: false }, ticks: { color: colors.textColor, font: { size: 11 } } }
+                    }
+                }
+            });
+        }
+
+        function updateChartTheme() {
+            if (!trendChartInstance) return;
+            const colors = getChartThemeColors();
+
+            [trendChartInstance, breakdownChartInstance, stabilityChartInstance, rankingChartInstance].forEach(chart => {
+                if (!chart) return;
+                if (chart.options.scales.x) {
+                    chart.options.scales.x.grid.color = colors.gridColor;
+                    chart.options.scales.x.ticks.color = colors.textColor;
+                }
+                if (chart.options.scales.y) {
+                    if (chart !== rankingChartInstance && chart !== stabilityChartInstance) {
+                        chart.options.scales.y.grid.color = colors.gridColor;
+                    }
+                    chart.options.scales.y.ticks.color = colors.textColor;
+                }
+                if (chart.options.plugins?.legend?.labels) {
+                    chart.options.plugins.legend.labels.color = colors.textColor;
+                }
+                chart.update();
+            });
+        }
+
+        function updateTrendChart(filtered) {
+            const labels = filtered.map(d => d.year);
+            const dataValues = filtered.map(d => d[currentMetric]);
+            const palette = countryColorMap[currentCountry] || countryColorMap["World"];
+
+            // Compute rolling average for the selected metric (Energy_transition_velocity.sql Section 2)
+            const rollingValues = dataValues.map((_, idx) => {
+                const startIdx = Math.max(0, idx - 4);
+                const sub = dataValues.slice(startIdx, idx + 1);
+                return Number((sub.reduce((a, b) => a + b, 0) / sub.length).toFixed(1));
+            });
+
+            const minVal = Math.min(...dataValues);
+            const maxVal = Math.max(...dataValues);
+            const padding = Math.max((maxVal - minVal) * 0.15, 1);
+
+            trendChartInstance.data.labels = labels;
+            trendChartInstance.data.datasets = [
+                {
+                    label: `${currentCountry} — Yearly ${getMetricLabel(currentMetric)}`,
+                    data: dataValues,
+                    borderColor: palette.border,
+                    backgroundColor: palette.bg,
+                    fill: true,
+                    tension: 0.3,
+                    borderWidth: 3,
+                    pointRadius: 3.5,
+                    pointHoverRadius: 6,
+                    pointBackgroundColor: palette.border
+                },
+                {
+                    label: `Long-Term Smoothed Average (5-Year Trend)`,
+                    data: rollingValues,
+                    borderColor: '#94a3b8',
+                    borderDash: [6, 4],
+                    backgroundColor: 'transparent',
+                    fill: false,
+                    tension: 0.35,
+                    borderWidth: 2,
+                    pointRadius: 0
+                }
+            ];
+
+            trendChartInstance.options.scales.y.suggestedMin = currentMetric === 'net_electricity'
+                ? Math.floor(minVal - padding)
+                : Math.max(0, Math.floor(minVal - padding));
+            trendChartInstance.options.scales.y.suggestedMax = currentMetric.includes('share')
+                ? Math.min(100, Math.ceil(maxVal + padding))
+                : Math.ceil(maxVal + padding);
+
+            trendChartInstance.update();
+        }
+
+        function updateBreakdownChart(filtered) {
+            breakdownChartInstance.data.labels = filtered.map(d => d.year);
+            breakdownChartInstance.data.datasets = [
+                { label: 'Solar', data: filtered.map(d => d.solar), backgroundColor: '#f59e0b' },
+                { label: 'Wind', data: filtered.map(d => d.wind), backgroundColor: '#06b6d4' },
+                { label: 'Hydro', data: filtered.map(d => d.hydro), backgroundColor: '#10b981' },
+                { label: 'Nuclear', data: filtered.map(d => d.nuclear), backgroundColor: '#8b5cf6' },
+                { label: 'Natural Gas', data: filtered.map(d => d.gas), backgroundColor: '#f97316' },
+                { label: 'Coal', data: filtered.map(d => d.coal), backgroundColor: '#64748b' },
+                { label: 'Oil', data: filtered.map(d => d.oil), backgroundColor: '#e11d48' }
+            ];
+            breakdownChartInstance.update();
+        }
+
+        function updateStabilityChart(year) {
+            // Focus on top weather-dependent grids to illustrate the 3 stability classes
+            const yearData = rawData
+                .filter(d => d.year === year && d.country !== "World")
+                .sort((a, b) => b.weather_share - a.weather_share)
+                .slice(0, 12);
+
+            stabilityChartInstance.data.labels = yearData.map(d => d.country);
+            stabilityChartInstance.data.datasets = [{
+                label: 'Solar + Wind Share (%)',
+                data: yearData.map(d => d.weather_share),
+                backgroundColor: yearData.map(d => {
+                    if (d.weather_share > 60) return '#f43f5e';
+                    if (d.weather_share >= 40) return '#10b981';
+                    return '#f59e0b';
+                }),
+                borderRadius: 5
+            }];
+            stabilityChartInstance.update();
+        }
+
+        function updateRankingChart(year) {
+            if (rankingMode === 'momentum') {
+                const countriesOnly = countriesList.filter(c => c !== "World");
+                const momentumList = countriesOnly.map(c => {
+                    const sRow = rawData.find(d => d.country === c && d.year === startYear);
+                    const eRow = rawData.find(d => d.country === c && d.year === endYear);
+                    const gain = (sRow && eRow) ? Number((eRow.renewable_share - sRow.renewable_share).toFixed(1)) : 0;
+                    return { country: c, val: gain };
+                }).sort((a, b) => b.val - a.val).slice(0, 14);
+
+                document.getElementById('rankingChartTitle').textContent = `Biggest Gains in Renewable Electricity Share (${startYear} → ${endYear})`;
+                document.getElementById('rankingChartSub').textContent = `Increase in renewable electricity share measured in percentage points`;
+
+                rankingChartInstance.data.labels = momentumList.map(d => d.country);
+                rankingChartInstance.data.datasets = [{
+                    label: `Clean Energy Gain (percentage points)`,
+                    data: momentumList.map(d => d.val),
+                    backgroundColor: momentumList.map(d => d.country === currentCountry ? '#f59e0b' : '#10b981'),
+                    borderRadius: 6
+                }];
+            } else if (rankingMode === 'net_balance') {
+                const yearData = rawData
+                    .filter(d => d.year === year && d.country !== "World" && d.net_electricity !== 0)
+                    .sort((a, b) => b.net_electricity - a.net_electricity);
+
+                document.getElementById('rankingChartTitle').textContent = `Electricity Exporters vs. Importers (${year})`;
+                document.getElementById('rankingChartSub').textContent = `Electricity produced minus electricity needed (Terawatt-hours) • Green: Extra Power Exported | Red: Power Imported`;
+
+                rankingChartInstance.data.labels = yearData.map(d => d.country);
+                rankingChartInstance.data.datasets = [{
+                    label: `Electricity Surplus or Deficit (Terawatt-hours)`,
+                    data: yearData.map(d => d.net_electricity),
+                    backgroundColor: yearData.map(d => d.net_electricity >= 0 ? '#10b981' : '#f43f5e'),
+                    borderRadius: 6
+                }];
+            } else {
+                const yearData = rawData
+                    .filter(d => d.year === year && d.country !== "World")
+                    .sort((a, b) => b[currentMetric] - a[currentMetric])
+                    .slice(0, 15);
+
+                document.getElementById('rankingChartTitle').textContent = `Country Comparison Leaderboard (${getMetricLabel(currentMetric)} in ${year})`;
+                document.getElementById('rankingChartSub').textContent = `How countries compare for the selected metric in ${year}`;
+
+                rankingChartInstance.data.labels = yearData.map(d => d.country);
+                rankingChartInstance.data.datasets = [{
+                    label: getMetricLabel(currentMetric),
+                    data: yearData.map(d => d[currentMetric]),
+                    backgroundColor: yearData.map(d => d.country === currentCountry ? '#f59e0b' : '#10b981'),
+                    borderRadius: 6
+                }];
+            }
+            rankingChartInstance.update();
+        }
+
+        // Data Table & Sorting & Filtering
+        function renderTable() {
+            const searchVal = document.getElementById('tableSearch').value.toLowerCase();
+            const filtered = rawData.filter(d => 
+                d.country.toLowerCase().includes(searchVal) &&
+                d.year >= startYear && d.year <= endYear
+            );
+
+            // Sorting
+            filtered.sort((a, b) => {
+                const valA = a[currentSortField];
+                const valB = b[currentSortField];
+                if (typeof valA === 'string') {
+                    return currentSortAsc ? valA.localeCompare(valB) : valB.localeCompare(valA);
+                }
+                return currentSortAsc ? valA - valB : valB - valA;
+            });
+
+            const totalRows = filtered.length;
+            const totalPages = Math.ceil(totalRows / pageSize) || 1;
+            if (tablePage > totalPages) tablePage = totalPages;
+            if (tablePage < 1) tablePage = 1;
+
+            const startIndex = (tablePage - 1) * pageSize;
+            const paginated = filtered.slice(startIndex, startIndex + pageSize);
+
+            const tbody = document.getElementById('dataTableBody');
+            tbody.innerHTML = '';
+
+            paginated.forEach(row => {
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-slate-100 dark:hover:bg-slate-800/40 transition';
+                const statusBadge = row.grid_status === 'Well-Balanced Grid'
+                    ? '<span class="px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">Well-Balanced Grid</span>'
+                    : (row.grid_status === 'High Weather Reliance'
+                        ? '<span class="px-2 py-0.5 rounded-full text-xs font-medium bg-rose-500/10 text-rose-600 dark:text-rose-400">High Weather Reliance (&gt;60%)</span>'
+                        : '<span class="px-2 py-0.5 rounded-full text-xs font-medium bg-amber-500/10 text-amber-600 dark:text-amber-400">Stable (Needs More Clean Energy)</span>');
+
+                const netColor = row.net_electricity >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400';
+
+                tr.innerHTML = `
+                    <td class="px-4 py-3 font-medium text-slate-900 dark:text-white">${row.country}</td>
+                    <td class="px-4 py-3 text-slate-500 dark:text-slate-400">${row.year}</td>
+                    <td class="px-4 py-3 font-semibold text-emerald-600 dark:text-emerald-400">${row.renewable_share}%</td>
+                    <td class="px-4 py-3 text-slate-600 dark:text-slate-300">${row.fossil_share}%</td>
+                    <td class="px-4 py-3 text-amber-600 dark:text-amber-400 font-medium">${row.weather_share}%</td>
+                    <td class="px-4 py-3 font-medium ${netColor}">${row.net_electricity >= 0 ? '+' : ''}${row.net_electricity} Terawatt-hours</td>
+                    <td class="px-4 py-3">${statusBadge}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            document.getElementById('tablePaginationInfo').textContent = `Showing ${Math.min(startIndex + 1, totalRows)} to ${Math.min(startIndex + pageSize, totalRows)} of ${totalRows} entries (Page ${tablePage} of ${totalPages})`;
+        }
+
+        function filterTable() {
+            tablePage = 1;
+            renderTable();
+        }
+
+        function sortTable(field) {
+            if (currentSortField === field) {
+                currentSortAsc = !currentSortAsc;
+            } else {
+                currentSortField = field;
+                currentSortAsc = true;
+            }
+            renderTable();
+        }
+
+        function changePage(direction) {
+            tablePage += direction;
+            renderTable();
+        }
+
+        // Theme toggler with full Light & Dark mode support
+        function toggleDarkMode() {
+            const html = document.documentElement;
+            html.classList.toggle('dark');
+            updateChartTheme();
+        }
+    </script>
+</body>
+</html>
