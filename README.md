@@ -2,6 +2,10 @@
 
 This repository contains a set of SQL scripts designed to analyze renewable energy adoption, electricity generation, and the pace of the energy transition across countries. The project transforms a larger dataset, `renewable_energy_share`, into cleaner, purpose-specific tables for comparison, reporting, and exploratory analysis.
 
+> **▶ Live dashboard:** **[diegoarmijog-pixel.github.io/data-analysis-project-Renewable-energy](https://diegoarmijog-pixel.github.io/data-analysis-project-Renewable-energy/)**
+>
+> An interactive companion to the SQL analysis: 222 countries, 2000&ndash;2025, renewable vs fossil shares, transition momentum and grid balance. No installation required.
+
 ## Project objective
 
 The main goal of this project is to support energy transition analysis by answering questions such as:
@@ -178,6 +182,10 @@ It calculates:
 
 This allows the project to assess both energy security and the resilience of each country’s electricity system.
 
+### 8) dashboard_ai_gemini/
+
+A self-contained interactive dashboard that visualises the dataset in the browser. It is a single portable HTML file with the data embedded, so it runs offline with no server, no build step and no external requests. See [Interactive dashboard](#interactive-dashboard) for details.
+
 ---
 
 ## Typical analysis workflow
@@ -191,6 +199,53 @@ A common workflow for this project is:
 5. Use `Demographic_energy_intensity.sql` to understand the drivers of electricity demand.
 6. Use `Energy_transition_velocity.sql` to assess the pace of the energy transition.
 7. Use `deficit_and_stability.sql` to evaluate energy balance, external dependence, and grid stability.
+
+---
+
+## Interactive dashboard
+
+The repository also includes a browser-based dashboard that turns the same dataset into an explorable view of the energy transition. It needs no database and no build step: the data is embedded in the page, so it works from a plain file and offline.
+
+- **Live version:** https://diegoarmijog-pixel.github.io/data-analysis-project-Renewable-energy/
+- **Source file:** [`dashboard_ai_gemini/renewable_energy_insights_dashboard_2000_2025.html`](dashboard_ai_gemini/renewable_energy_insights_dashboard_2000_2025.html)
+
+### What it shows
+
+- **Renewable vs fossil share** — two trend lines plus a dashed 5-year renewable average, so short-term volatility is separated from the underlying direction.
+- **Electricity sources breakdown** — stacked terawatt-hours per year for solar, wind, hydro, bioenergy, nuclear, coal, gas and oil.
+- **Reliance on weather-dependent power** — the top 12 countries by solar + wind share, colour-coded by grid classification.
+- **Country leaderboard** — three modes: renewable share, biggest gains, and electricity exporters vs importers.
+- **KPI cards** — renewable share, fossil share, transition momentum (percentage points per year and CAGR), and grid balance with net trade.
+- **Detailed records table** — sortable and searchable, with an expandable row showing the full fuel mix, low-carbon share, population and energy per capita.
+
+### Interaction
+
+- Searchable country combobox covering 222 countries and regions, with full keyboard navigation.
+- Dual-thumb year-range slider spanning 2000 to 2025.
+- CSV export of the current table view and PNG export of any chart.
+- Country, year range, ranking mode and theme persist across reloads via `localStorage`.
+- Light and dark mode.
+
+### Data handling notes
+
+- Regional aggregates (Africa, the European Union, etc.) are excluded; only ISO-coded countries plus `World` and `Kosovo` are shown.
+- 2025 figures are provisional and labelled as such in the interface.
+- When generation and demand differ by less than 0.05 TWh, net trade is reported as *not reported* rather than as a real zero balance, because roughly half of the source rows carry no trade data.
+- `energy_per_capita` ends in 2024, so it is left blank for 2025 rather than carried forward.
+
+### Technical notes
+
+- Single portable HTML file — the dataset is embedded as compact arrays because `fetch()` is blocked on `file://`.
+- Tailwind CSS, Chart.js and Font Awesome are vendored under `dashboard_ai_gemini/assets/`, so the page makes **no external requests** and works fully offline.
+- No cookies, no analytics, no third-party scripts.
+- Responsive from 375 px upwards, keyboard accessible, and respects `prefers-reduced-motion`.
+- Published with GitHub Pages: the repository root holds a small `index.html` cover page that links to the dashboard.
+
+To run it locally, open the HTML file directly, or serve the repository folder:
+
+```sh
+python -m http.server 8000
+```
 
 ---
 
@@ -290,6 +345,8 @@ The majority of the balanced-grid countries are in European regions where weathe
 
 This repository is focused on renewable energy transition analysis using SQL. It organizes country energy data into clean, purpose-specific tables and supports descriptive and comparative analysis across demographic, generation, decarbonization, and energy-balance dimensions.
 
+The same dataset is also published as an interactive dashboard, so the findings can be explored in the browser without running any queries. See the [live version](https://diegoarmijog-pixel.github.io/data-analysis-project-Renewable-energy/).
+
 The scripts are especially useful for:
 
 - country benchmarking
@@ -298,5 +355,6 @@ The scripts are especially useful for:
 - identifying energy demand drivers
 - evaluating renewable energy adoption over time
 - assessing electricity security and exporter/importer dynamics
+- exploring the results interactively through the dashboard
 
 
